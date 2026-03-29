@@ -1,0 +1,56 @@
+import { NextResponse } from 'next/server';
+import { db } from '@/shared/lib/db';
+import { getSession } from '@/shared/lib/auth';
+import { z } from 'zod';
+
+// GET: history + rewards
+export async function GET() {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+    const [history, rewards, user] = await Promise.all([
+        db`SELECT type, points, description, created_at FROM point_transactions WHERE user_id = ${session.userId} ORDER BY created_at DESC LIMIT 30`,
+        db`SELECT id, name, description, points_cost, category FROM rewards WHERE is_active = true ORDER BY sort_order`,
+        db`SELECT total_points, available_points, vip_level FROM users WHERE id = ${session.userId}`,
+    ]);
+
+    return NextResponse.json({ history, rewards, user: user[0] });
+}
+
+// POST: redeem reward
+const redeemSchema = z.object({ rewardId: z.string().uuid() });
+
+export async function POST(req: Request) {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+    try {
+        const body = await req.json();
+        const parsed = redeemSchema.safeParse(body);
+        if (!parsed.success) return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 });
+
+        const { rewardId } = parsed.data;
+
+        const reward = await db`SELECT id, name, points_cost FROM rewards WHERE id = ${rewardId} AND is_active = true`;
+        if (reward.length === 0) return NextResponse.json({ error: 'Premio no encontrado' }, { status: 404 });
+
+        const user = await db`SELECT available_points FROM users WHERE id = ${session.userId}`;
+        if (user[0].available_points < reward[0].points_cost) {
+            return NextResponse.json({ error: 'No tienes suficientes puntos' }, { status: 400 });
+        }
+
+        // Deduct points
+        await db`UPDATE users SET available_points = available_points - ${reward[0].points_cost} WHERE id = ${session.userId}`;
+
+        // Log transaction
+        await db`INSERT INTO point_transactions (user_id, type, points, description) VALUES (${session.userId}, 'redeem', ${-reward[0].points_cost}, ${`Canje: ${reward[0].name}`})`;
+
+        // Create redemption
+        await db`INSERT INTO redemptions (user_id, reward_id, points_spent) VALUES (${session.userId}, ${rewardId}, ${reward[0].points_cost})`;
+
+        return NextResponse.json({ success: true, message: `¡Canjeaste "${reward[0].name}"! Muestra esto al mesero.` });
+    } catch (error: any) {
+        console.error('Redeem error:', error);
+        return NextResponse.json({ error: 'Error al canjear' }, { status: 500 });
+    }
+}
