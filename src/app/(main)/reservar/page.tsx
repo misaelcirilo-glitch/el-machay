@@ -3,11 +3,11 @@ import { useState, useEffect } from 'react';
 import { CalendarDays, Clock, Users, MessageSquare, Check, AlertCircle } from 'lucide-react';
 
 const TIME_SLOTS = [
-    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-    '15:00', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'
+    { label: 'Mañana (9:00 - 14:00)', slots: ['9:00', '9:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30'] },
+    { label: 'Noche (18:00 - 21:00)', slots: ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30'] },
 ];
 
-const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8];
+const PARTY_SIZES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
 
 interface Reservation {
     id: string;
@@ -107,18 +107,25 @@ export default function ReservarPage() {
                     <label className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-2 flex items-center gap-2">
                         <Clock size={14} /> Hora
                     </label>
-                    <div className="grid grid-cols-4 gap-2">
-                        {TIME_SLOTS.map(slot => (
-                            <button
-                                key={slot} type="button"
-                                onClick={() => setTime(slot)}
-                                className={`py-2.5 rounded-xl text-xs font-bold transition-all ${time === slot
-                                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
-                                    : 'bg-white/5 text-slate-400 border border-white/10 hover:border-amber-500/30'
-                                }`}
-                            >
-                                {slot}
-                            </button>
+                    <div className="space-y-3">
+                        {TIME_SLOTS.map(group => (
+                            <div key={group.label}>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1.5">{group.label}</p>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {group.slots.map(slot => (
+                                        <button
+                                            key={slot} type="button"
+                                            onClick={() => setTime(slot)}
+                                            className={`py-2.5 rounded-xl text-xs font-bold transition-all ${time === slot
+                                                ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
+                                                : 'bg-white/5 text-slate-400 border border-white/10 hover:border-amber-500/30'
+                                            }`}
+                                        >
+                                            {slot}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         ))}
                     </div>
                 </div>

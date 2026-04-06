@@ -4,7 +4,7 @@ import { db } from '@/shared/lib/db';
 export async function GET() {
     try {
         const categories = await db`
-            SELECT id, name, description, sort_order FROM menu_categories
+            SELECT id, name, description, sort_order, image_url FROM menu_categories
             WHERE is_active = true ORDER BY sort_order
         `;
 

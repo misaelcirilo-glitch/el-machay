@@ -19,6 +19,7 @@ interface MenuCategory {
     id: string;
     name: string;
     description: string;
+    image_url: string | null;
     items: MenuItem[];
 }
 
@@ -47,9 +48,9 @@ export default function CartaPage() {
     const displayMenu = search ? filteredMenu : (activeCategory ? menu.filter(c => c.id === activeCategory) : menu);
 
     return (
-        <div className="px-4 pt-6 space-y-5">
+        <div className="space-y-5">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-4 pt-6">
                 <div>
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Hola, {user?.name?.split(' ')[0]}</p>
                     <h1 className="text-xl font-black">Nuestra Carta</h1>
@@ -61,8 +62,8 @@ export default function CartaPage() {
             </div>
 
             {/* Search */}
-            <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="relative px-4">
+                <Search size={16} className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                     type="text"
                     placeholder="Buscar plato..."
@@ -74,7 +75,7 @@ export default function CartaPage() {
 
             {/* Category Pills */}
             {!search && (
-                <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-none">
+                <div className="flex gap-2 overflow-x-auto pb-1 px-4 scrollbar-none">
                     {menu.map(cat => (
                         <button
                             key={cat.id}
@@ -96,7 +97,7 @@ export default function CartaPage() {
                     <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
                 </div>
             ) : (
-                <div className="space-y-6 pb-4">
+                <div className="space-y-6 px-4 pb-4">
                     {displayMenu.map(cat => (
                         <div key={cat.id}>
                             {search && <h2 className="text-sm font-black text-amber-400 uppercase tracking-widest mb-3">{cat.name}</h2>}
@@ -106,22 +107,29 @@ export default function CartaPage() {
                                         key={item.id}
                                         className={`bg-white/5 border rounded-2xl overflow-hidden transition-all ${item.is_featured ? 'border-amber-500/30 shadow-lg shadow-amber-500/5' : 'border-white/10'}`}
                                     >
-                                        {item.image_url && (
-                                            <div className="h-40 bg-slate-800 overflow-hidden">
-                                                <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                                            </div>
-                                        )}
-                                        <div className="p-4">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex-1">
+                                        <div className="p-4 flex gap-3">
+                                            {/* Foto pequena */}
+                                            {item.image_url && (
+                                                <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0">
+                                                    <img
+                                                        src={item.image_url}
+                                                        alt={item.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Info */}
+                                            <div className="flex-1 flex flex-col justify-between min-w-0">
+                                                <div>
                                                     <div className="flex items-center gap-2">
                                                         <h3 className="font-black text-white">{item.name}</h3>
                                                         {item.is_featured && <Flame size={14} className="text-amber-400" />}
                                                     </div>
                                                     {item.description && (
-                                                        <p className="text-slate-400 text-xs mt-1 leading-relaxed">{item.description}</p>
+                                                        <p className="text-slate-400 text-xs mt-1 leading-relaxed line-clamp-2">{item.description}</p>
                                                     )}
-                                                    <div className="flex items-center gap-2 mt-2">
+                                                    <div className="flex items-center gap-2 mt-1.5">
                                                         {item.is_spicy && (
                                                             <span className="flex items-center gap-1 text-[10px] text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full font-bold">
                                                                 <CircleAlert size={10} /> Picante
@@ -139,9 +147,7 @@ export default function CartaPage() {
                                                         )}
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-lg font-black text-amber-400">S/{Number(item.price).toFixed(2)}</p>
-                                                </div>
+                                                <p className="text-lg font-black text-amber-400 mt-1">S/{Number(item.price).toFixed(2)}</p>
                                             </div>
                                         </div>
                                     </div>

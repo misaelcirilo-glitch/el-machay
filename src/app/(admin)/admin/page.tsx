@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from '@/shared/lib/useSession';
 import { useRouter } from 'next/navigation';
-import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame } from 'lucide-react';
+import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 
 export default function AdminPage() {
     const { user, loading, logout } = useSession();
@@ -12,7 +12,11 @@ export default function AdminPage() {
     const [assigning, setAssigning] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [dashboard, setDashboard] = useState<any>(null);
-    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions'>('points');
+    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions' | 'promos'>('reservations');
+    const [promotions, setPromotions] = useState<any[]>([]);
+    const [showPromoForm, setShowPromoForm] = useState(false);
+    const [promoForm, setPromoForm] = useState({ title: '', description: '', discount_type: 'percentage', discount_value: '', min_points: '', valid_from: '', valid_until: '' });
+    const [promoLoading, setPromoLoading] = useState(false);
 
     useEffect(() => {
         if (!loading && user && user.role !== 'admin' && user.role !== 'waiter') {
@@ -23,6 +27,58 @@ export default function AdminPage() {
     useEffect(() => {
         fetch('/api/admin/dashboard').then(r => r.json()).then(setDashboard);
     }, [result]);
+
+    useEffect(() => {
+        if (tab === 'promos') {
+            fetch('/api/admin/promotions').then(r => r.json()).then(d => setPromotions(d.promotions || []));
+        }
+    }, [tab, promoLoading]);
+
+    const handleCreatePromo = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setPromoLoading(true);
+        try {
+            await fetch('/api/admin/promotions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...promoForm,
+                    discount_value: promoForm.discount_value ? parseFloat(promoForm.discount_value) : null,
+                    min_points: promoForm.min_points ? parseInt(promoForm.min_points) : 0,
+                }),
+            });
+            setPromoForm({ title: '', description: '', discount_type: 'percentage', discount_value: '', min_points: '', valid_from: '', valid_until: '' });
+            setShowPromoForm(false);
+        } finally {
+            setPromoLoading(false);
+        }
+    };
+
+    const togglePromo = async (id: string, is_active: boolean) => {
+        setPromoLoading(true);
+        try {
+            await fetch('/api/admin/promotions', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, is_active: !is_active }),
+            });
+        } finally {
+            setPromoLoading(false);
+        }
+    };
+
+    const deletePromo = async (id: string) => {
+        setPromoLoading(true);
+        try {
+            await fetch('/api/admin/promotions', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+            });
+        } finally {
+            setPromoLoading(false);
+        }
+    };
 
     const handleAssignPoints = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -132,6 +188,7 @@ export default function AdminPage() {
             <div className="flex bg-white/5 rounded-xl p-1 border border-white/10">
                 {[
                     { id: 'reservations', label: 'Reservas', icon: CalendarDays },
+                    { id: 'promos', label: 'Promos', icon: Megaphone },
                     { id: 'redemptions', label: 'Canjes', icon: Gift },
                     { id: 'points', label: 'Actividad', icon: TrendingUp },
                 ].map(t => (
@@ -177,6 +234,114 @@ export default function AdminPage() {
                                 <p className="text-[10px] text-slate-500">{rd.customer_phone}</p>
                             </div>
                             <Gift size={18} className="text-amber-400" />
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Promos Tab */}
+            {tab === 'promos' && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Promociones</h3>
+                        <button
+                            onClick={() => setShowPromoForm(!showPromoForm)}
+                            className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-full"
+                        >
+                            <Plus size={14} /> Nueva
+                        </button>
+                    </div>
+
+                    {showPromoForm && (
+                        <form onSubmit={handleCreatePromo} className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                            <input
+                                type="text" placeholder="Título (ej: 2x1 en Ceviches)" required
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 outline-none focus:border-amber-500 transition text-sm"
+                                value={promoForm.title} onChange={e => setPromoForm({ ...promoForm, title: e.target.value })}
+                            />
+                            <textarea
+                                placeholder="Descripción (ej: Válido solo los viernes de 18:00 a 21:00)"
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 outline-none focus:border-amber-500 transition text-sm resize-none h-16"
+                                value={promoForm.description} onChange={e => setPromoForm({ ...promoForm, description: e.target.value })}
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Tipo</label>
+                                    <select
+                                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-amber-500"
+                                        value={promoForm.discount_type} onChange={e => setPromoForm({ ...promoForm, discount_type: e.target.value })}
+                                    >
+                                        <option value="percentage">% Descuento</option>
+                                        <option value="fixed">S/ Descuento</option>
+                                        <option value="free_item">Gratis</option>
+                                        <option value="points_multiplier">x Puntos</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Valor</label>
+                                    <input
+                                        type="number" step="0.01" placeholder="Ej: 20"
+                                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 outline-none focus:border-amber-500 text-sm"
+                                        value={promoForm.discount_value} onChange={e => setPromoForm({ ...promoForm, discount_value: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Desde</label>
+                                    <input
+                                        type="date"
+                                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-amber-500"
+                                        value={promoForm.valid_from} onChange={e => setPromoForm({ ...promoForm, valid_from: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Hasta</label>
+                                    <input
+                                        type="date"
+                                        className="w-full px-3 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white text-sm outline-none focus:border-amber-500"
+                                        value={promoForm.valid_until} onChange={e => setPromoForm({ ...promoForm, valid_until: e.target.value })}
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                type="submit" disabled={promoLoading}
+                                className="w-full py-3 bg-amber-500 text-white font-black text-sm uppercase tracking-widest rounded-xl shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {promoLoading ? 'Creando...' : 'Publicar Promoción'}
+                            </button>
+                        </form>
+                    )}
+
+                    {promotions.length === 0 ? (
+                        <p className="text-slate-500 text-sm text-center py-6">Sin promociones creadas</p>
+                    ) : promotions.map((p: any) => (
+                        <div key={p.id} className={`bg-white/5 border rounded-2xl p-4 ${p.is_active ? 'border-amber-500/20' : 'border-white/10 opacity-50'}`}>
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-black text-sm">{p.title}</h4>
+                                        {p.is_active && <span className="text-[9px] bg-green-400/10 text-green-400 px-2 py-0.5 rounded-full font-bold uppercase">Activa</span>}
+                                    </div>
+                                    {p.description && <p className="text-xs text-slate-400 mt-1">{p.description}</p>}
+                                    <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-500">
+                                        {p.discount_type === 'percentage' && <span>{p.discount_value}% dto</span>}
+                                        {p.discount_type === 'fixed' && <span>S/{p.discount_value} dto</span>}
+                                        {p.discount_type === 'free_item' && <span>Item gratis</span>}
+                                        {p.discount_type === 'points_multiplier' && <span>x{p.discount_value} puntos</span>}
+                                        {p.valid_from && <span>Desde {p.valid_from}</span>}
+                                        {p.valid_until && <span>Hasta {p.valid_until}</span>}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button onClick={() => togglePromo(p.id, p.is_active)} className="p-1.5 text-slate-400 hover:text-amber-400 transition">
+                                        {p.is_active ? <ToggleRight size={20} className="text-green-400" /> : <ToggleLeft size={20} />}
+                                    </button>
+                                    <button onClick={() => deletePromo(p.id)} className="p-1.5 text-slate-400 hover:text-red-400 transition">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </div>
