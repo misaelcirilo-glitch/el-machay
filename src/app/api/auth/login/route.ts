@@ -15,11 +15,14 @@ export async function POST(req: Request) {
         const parsed = schema.safeParse(body);
         if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
-        const { phone, password } = parsed.data;
+        const { password } = parsed.data;
+        const last9 = parsed.data.phone.replace(/\D/g, '').slice(-9);
 
         const result = await db`
             SELECT id, name, phone, password_hash, role, vip_level, available_points
-            FROM users WHERE phone = ${phone}
+            FROM users
+            WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = ${last9}
+            LIMIT 1
         `;
 
         if (result.length === 0) {

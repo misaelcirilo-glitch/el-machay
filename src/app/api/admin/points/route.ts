@@ -21,7 +21,16 @@ export async function POST(req: Request) {
 
         const { phone, amount } = parsed.data;
 
-        const customer = await db`SELECT id, name, available_points, total_points, vip_level FROM users WHERE phone = ${phone}`;
+        // Normalizar: solo digitos, ultimos 9 (cubre +51, espacios, guiones)
+        const normalizedDigits = phone.replace(/\D/g, '');
+        const last9 = normalizedDigits.slice(-9);
+
+        const customer = await db`
+            SELECT id, name, available_points, total_points, vip_level
+            FROM users
+            WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = ${last9}
+            LIMIT 1
+        `;
         if (customer.length === 0) {
             return NextResponse.json({ error: 'Cliente no encontrado. Debe registrarse primero.' }, { status: 404 });
         }

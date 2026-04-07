@@ -18,9 +18,14 @@ export async function POST(req: Request) {
         const parsed = schema.safeParse(body);
         if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
-        const { name, phone, email, password, referralCode } = parsed.data;
+        const { name, email, password, referralCode } = parsed.data;
+        // Normalizar phone: solo digitos
+        const phone = parsed.data.phone.replace(/\D/g, '');
 
-        const existing = await db`SELECT id FROM users WHERE phone = ${phone}`;
+        const existing = await db`
+            SELECT id FROM users
+            WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = ${phone.slice(-9)}
+        `;
         if (existing.length > 0) {
             return NextResponse.json({ error: 'Este número ya está registrado' }, { status: 400 });
         }
