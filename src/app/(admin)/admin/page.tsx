@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from '@/shared/lib/useSession';
 import { useRouter } from 'next/navigation';
-import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight, UtensilsCrossed, Edit2, X, Upload, Loader2 } from 'lucide-react';
 
 export default function AdminPage() {
     const { user, loading, logout } = useSession();
@@ -12,7 +12,12 @@ export default function AdminPage() {
     const [assigning, setAssigning] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [dashboard, setDashboard] = useState<any>(null);
-    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions' | 'promos'>('reservations');
+    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions' | 'promos' | 'carta'>('reservations');
+    const [menuItems, setMenuItems] = useState<any[]>([]);
+    const [menuCategories, setMenuCategories] = useState<any[]>([]);
+    const [editingItem, setEditingItem] = useState<any>(null);
+    const [savingItem, setSavingItem] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [promotions, setPromotions] = useState<any[]>([]);
     const [showPromoForm, setShowPromoForm] = useState(false);
     const [promoForm, setPromoForm] = useState({ title: '', description: '', discount_type: 'percentage', discount_value: '', min_points: '', valid_from: '', valid_until: '' });
@@ -32,7 +37,58 @@ export default function AdminPage() {
         if (tab === 'promos') {
             fetch('/api/admin/promotions').then(r => r.json()).then(d => setPromotions(d.promotions || []));
         }
+        if (tab === 'carta') {
+            loadMenu();
+        }
     }, [tab, promoLoading]);
+
+    const loadMenu = async () => {
+        const res = await fetch('/api/admin/menu').then(r => r.json());
+        setMenuCategories(res.categories || []);
+        setMenuItems(res.items || []);
+    };
+
+    const handleSaveItem = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingItem) return;
+        setSavingItem(true);
+        try {
+            await fetch(`/api/admin/menu/${editingItem.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: editingItem.name,
+                    description: editingItem.description,
+                    price: parseFloat(editingItem.price),
+                    image_url: editingItem.image_url,
+                    is_available: editingItem.is_available,
+                    is_featured: editingItem.is_featured,
+                }),
+            });
+            setEditingItem(null);
+            loadMenu();
+        } finally {
+            setSavingItem(false);
+        }
+    };
+
+    const handleUploadPhoto = async (file: File) => {
+        if (!editingItem) return;
+        setUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/admin/menu/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.url) {
+                setEditingItem({ ...editingItem, image_url: data.url });
+            } else {
+                alert(data.error || 'Error al subir');
+            }
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleCreatePromo = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -185,9 +241,10 @@ export default function AdminPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex bg-white/5 rounded-xl p-1 border border-white/10">
+            <div className="flex bg-white/5 rounded-xl p-1 border border-white/10 overflow-x-auto">
                 {[
                     { id: 'reservations', label: 'Reservas', icon: CalendarDays },
+                    { id: 'carta', label: 'Carta', icon: UtensilsCrossed },
                     { id: 'promos', label: 'Promos', icon: Megaphone },
                     { id: 'redemptions', label: 'Canjes', icon: Gift },
                     { id: 'points', label: 'Actividad', icon: TrendingUp },
@@ -344,6 +401,147 @@ export default function AdminPage() {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Carta Tab */}
+            {tab === 'carta' && (
+                <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Editar carta</h3>
+                    {menuCategories.map(cat => {
+                        const items = menuItems.filter(i => i.category_id === cat.id);
+                        return (
+                            <div key={cat.id} className="space-y-2">
+                                <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest pt-2">{cat.name}</p>
+                                {items.map(item => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setEditingItem({ ...item })}
+                                        className={`w-full bg-white/5 border rounded-xl p-3 flex items-center gap-3 hover:bg-white/10 transition text-left ${item.is_available ? 'border-white/10' : 'border-red-500/30 opacity-50'}`}
+                                    >
+                                        {item.image_url ? (
+                                            <img src={item.image_url} alt={item.name} className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                                                <UtensilsCrossed size={16} className="text-slate-600" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-sm text-white truncate">{item.name}</p>
+                                            <p className="text-[10px] text-slate-500">
+                                                {!item.is_available && <span className="text-red-400">Oculto · </span>}
+                                                {item.is_featured && <span className="text-amber-400">Destacado · </span>}
+                                                {!item.image_url && <span className="text-orange-400">Sin foto</span>}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 shrink-0">
+                                            <p className="font-black text-amber-400 text-sm">S/{Number(item.price).toFixed(2)}</p>
+                                            <Edit2 size={14} className="text-slate-500" />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Edit Item Modal */}
+            {editingItem && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center">
+                    <form onSubmit={handleSaveItem} className="bg-[#0f0f1a] border border-white/10 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 max-h-[90vh] overflow-y-auto space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-black text-white">Editar plato</h3>
+                            <button type="button" onClick={() => setEditingItem(null)} className="text-slate-400">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Foto */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Foto</label>
+                            <div className="relative">
+                                {editingItem.image_url ? (
+                                    <img src={editingItem.image_url} alt="" className="w-full aspect-video rounded-xl object-cover" />
+                                ) : (
+                                    <div className="w-full aspect-video rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                                        <UtensilsCrossed size={32} className="text-slate-600" />
+                                    </div>
+                                )}
+                                <label className="absolute bottom-2 right-2 bg-amber-500 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer hover:brightness-110 transition shadow-lg">
+                                    {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                                    {uploading ? 'Subiendo...' : 'Subir foto'}
+                                    <input
+                                        type="file" accept="image/*" className="hidden" disabled={uploading}
+                                        onChange={e => e.target.files?.[0] && handleUploadPhoto(e.target.files[0])}
+                                    />
+                                </label>
+                            </div>
+                            <input
+                                type="text" placeholder="O pega URL de imagen..."
+                                value={editingItem.image_url || ''}
+                                onChange={e => setEditingItem({ ...editingItem, image_url: e.target.value })}
+                                className="w-full mt-2 px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white outline-none focus:border-amber-500 text-xs"
+                            />
+                        </div>
+
+                        {/* Nombre */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Nombre</label>
+                            <input
+                                type="text" required value={editingItem.name}
+                                onChange={e => setEditingItem({ ...editingItem, name: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-amber-500 text-sm"
+                            />
+                        </div>
+
+                        {/* Descripcion */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Descripción</label>
+                            <textarea
+                                value={editingItem.description || ''}
+                                onChange={e => setEditingItem({ ...editingItem, description: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-amber-500 text-sm h-20 resize-none"
+                            />
+                        </div>
+
+                        {/* Precio */}
+                        <div>
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio (S/)</label>
+                            <input
+                                type="number" step="0.01" min="0" required value={editingItem.price}
+                                onChange={e => setEditingItem({ ...editingItem, price: e.target.value })}
+                                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-amber-500 text-lg font-black"
+                            />
+                        </div>
+
+                        {/* Toggles */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox" checked={editingItem.is_available}
+                                    onChange={e => setEditingItem({ ...editingItem, is_available: e.target.checked })}
+                                    className="w-4 h-4 accent-amber-500"
+                                />
+                                <span className="text-xs text-white font-bold">Disponible</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox" checked={editingItem.is_featured}
+                                    onChange={e => setEditingItem({ ...editingItem, is_featured: e.target.checked })}
+                                    className="w-4 h-4 accent-amber-500"
+                                />
+                                <span className="text-xs text-white font-bold">Destacado</span>
+                            </label>
+                        </div>
+
+                        <button
+                            type="submit" disabled={savingItem}
+                            className="w-full py-3 bg-amber-500 text-white font-black text-sm uppercase tracking-widest rounded-xl shadow-lg shadow-amber-500/20 hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                        >
+                            {savingItem ? 'Guardando...' : 'Guardar cambios'}
+                        </button>
+                    </form>
                 </div>
             )}
 
