@@ -9,8 +9,8 @@ export async function GET() {
     if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
     const [history, rewards, user] = await Promise.all([
-        db`SELECT type, points, description, created_at FROM point_transactions WHERE user_id = ${session.userId} ORDER BY created_at DESC LIMIT 30`,
-        db`SELECT id, name, description, points_cost, category FROM rewards WHERE is_active = true ORDER BY sort_order`,
+        db`SELECT type, points, description, created_at FROM point_transactions WHERE user_id = ${session.userId} AND restaurant_id = ${session.restaurantId} ORDER BY created_at DESC LIMIT 30`,
+        db`SELECT id, name, description, points_cost, category FROM rewards WHERE is_active = true AND restaurant_id = ${session.restaurantId} ORDER BY sort_order`,
         db`SELECT total_points, available_points, vip_level FROM users WHERE id = ${session.userId}`,
     ]);
 
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
         const { rewardId } = parsed.data;
 
-        const reward = await db`SELECT id, name, points_cost FROM rewards WHERE id = ${rewardId} AND is_active = true`;
+        const reward = await db`SELECT id, name, points_cost FROM rewards WHERE id = ${rewardId} AND is_active = true AND restaurant_id = ${session.restaurantId}`;
         if (reward.length === 0) return NextResponse.json({ error: 'Premio no encontrado' }, { status: 404 });
 
         const user = await db`SELECT available_points FROM users WHERE id = ${session.userId}`;
@@ -43,10 +43,10 @@ export async function POST(req: Request) {
         await db`UPDATE users SET available_points = available_points - ${reward[0].points_cost} WHERE id = ${session.userId}`;
 
         // Log transaction
-        await db`INSERT INTO point_transactions (user_id, type, points, description) VALUES (${session.userId}, 'redeem', ${-reward[0].points_cost}, ${`Canje: ${reward[0].name}`})`;
+        await db`INSERT INTO point_transactions (user_id, restaurant_id, type, points, description) VALUES (${session.userId}, ${session.restaurantId}, 'redeem', ${-reward[0].points_cost}, ${`Canje: ${reward[0].name}`})`;
 
         // Create redemption
-        await db`INSERT INTO redemptions (user_id, reward_id, points_spent) VALUES (${session.userId}, ${rewardId}, ${reward[0].points_cost})`;
+        await db`INSERT INTO redemptions (user_id, reward_id, points_spent, restaurant_id) VALUES (${session.userId}, ${rewardId}, ${reward[0].points_cost}, ${session.restaurantId})`;
 
         return NextResponse.json({ success: true, message: `¡Canjeaste "${reward[0].name}"! Muestra esto al mesero.` });
     } catch (error: any) {

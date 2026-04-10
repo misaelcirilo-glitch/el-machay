@@ -26,7 +26,7 @@ export async function POST(req: Request) {
         if (userId) {
             customer = await db`
                 SELECT id, name, available_points, total_points, vip_level
-                FROM users WHERE id = ${userId} LIMIT 1
+                FROM users WHERE id = ${userId} AND restaurant_id = ${session.restaurantId} LIMIT 1
             `;
         } else {
             const last9 = (phone || '').replace(/\D/g, '').slice(-9);
@@ -34,6 +34,7 @@ export async function POST(req: Request) {
                 SELECT id, name, available_points, total_points, vip_level
                 FROM users
                 WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = ${last9}
+                AND restaurant_id = ${session.restaurantId}
                 LIMIT 1
             `;
         }
@@ -57,8 +58,8 @@ export async function POST(req: Request) {
             WHERE id = ${user.id}`;
 
         const desc = `Consumo S/${amount.toFixed(2)}`;
-        await db`INSERT INTO point_transactions (user_id, type, points, description, reference_amount, performed_by)
-            VALUES (${user.id}, 'earn', ${pointsToAdd}, ${desc}, ${amount}, ${session.userId})`;
+        await db`INSERT INTO point_transactions (user_id, restaurant_id, type, points, description, reference_amount, performed_by)
+            VALUES (${user.id}, ${session.restaurantId}, 'earn', ${pointsToAdd}, ${desc}, ${amount}, ${session.userId})`;
 
         const updated = await db`SELECT available_points, total_points, vip_level FROM users WHERE id = ${user.id}`;
 

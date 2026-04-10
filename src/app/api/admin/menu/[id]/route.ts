@@ -24,7 +24,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
             is_spicy = COALESCE(${is_spicy}, is_spicy),
             is_vegetarian = COALESCE(${is_vegetarian}, is_vegetarian),
             is_gluten_free = COALESCE(${is_gluten_free}, is_gluten_free)
-        WHERE id = ${id}
+        WHERE id = ${id} AND restaurant_id = ${session.restaurantId}
         RETURNING *
     `;
 

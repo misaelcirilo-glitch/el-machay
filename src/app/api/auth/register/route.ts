@@ -10,6 +10,7 @@ const schema = z.object({
     email: z.string().email('Email inválido').optional().or(z.literal('')),
     password: z.string().min(4, 'Mínimo 4 caracteres'),
     referralCode: z.string().optional(),
+    restaurantSlug: z.string().min(1, 'Restaurante requerido'),
 });
 
 export async function POST(req: Request) {
@@ -18,16 +19,24 @@ export async function POST(req: Request) {
         const parsed = schema.safeParse(body);
         if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
 
-        const { name, email, password, referralCode } = parsed.data;
-        // Normalizar phone: solo digitos
+        const { name, email, password, referralCode, restaurantSlug } = parsed.data;
         const phone = parsed.data.phone.replace(/\D/g, '');
 
+        // Verificar restaurante
+        const restaurant = await db`SELECT id, slug, name FROM restaurants WHERE slug = ${restaurantSlug} AND is_active = true`;
+        if (restaurant.length === 0) {
+            return NextResponse.json({ error: 'Restaurante no encontrado' }, { status: 404 });
+        }
+        const restaurantId = restaurant[0].id;
+
+        // Verificar si ya existe en este restaurante
         const existing = await db`
             SELECT id FROM users
             WHERE RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 9) = ${phone.slice(-9)}
+              AND restaurant_id = ${restaurantId}
         `;
         if (existing.length > 0) {
-            return NextResponse.json({ error: 'Este número ya está registrado' }, { status: 400 });
+            return NextResponse.json({ error: 'Este número ya está registrado en este restaurante' }, { status: 400 });
         }
 
         const passwordHash = await bcrypt.hash(password, 10);
@@ -35,24 +44,23 @@ export async function POST(req: Request) {
 
         let referredBy = null;
         if (referralCode) {
-            const referrer = await db`SELECT id FROM users WHERE referral_code = ${referralCode.toUpperCase()}`;
+            const referrer = await db`SELECT id FROM users WHERE referral_code = ${referralCode.toUpperCase()} AND restaurant_id = ${restaurantId}`;
             if (referrer.length > 0) referredBy = referrer[0].id;
         }
 
         const result = await db`
-            INSERT INTO users (name, phone, email, password_hash, referral_code, referred_by)
-            VALUES (${name}, ${phone}, ${email || null}, ${passwordHash}, ${myReferralCode}, ${referredBy})
+            INSERT INTO users (name, phone, email, password_hash, referral_code, referred_by, restaurant_id)
+            VALUES (${name}, ${phone}, ${email || null}, ${passwordHash}, ${myReferralCode}, ${referredBy}, ${restaurantId})
             RETURNING id, name, phone, role, vip_level
         `;
 
         const user = result[0];
 
-        await db`INSERT INTO point_transactions (user_id, type, points, description) VALUES (${user.id}, 'bonus', 50, 'Bienvenida VIP')`;
+        await db`INSERT INTO point_transactions (user_id, type, points, description, restaurant_id) VALUES (${user.id}, 'bonus', 50, 'Bienvenida VIP', ${restaurantId})`;
         await db`UPDATE users SET total_points = 50, available_points = 50 WHERE id = ${user.id}`;
 
         if (referredBy) {
-            const desc = `Referido: ${name}`;
-            await db`INSERT INTO point_transactions (user_id, type, points, description) VALUES (${referredBy}, 'referral', 100, ${desc})`;
+            await db`INSERT INTO point_transactions (user_id, type, points, description, restaurant_id) VALUES (${referredBy}, 'referral', 100, ${`Referido: ${name}`}, ${restaurantId})`;
             await db`UPDATE users SET total_points = total_points + 100, available_points = available_points + 100 WHERE id = ${referredBy}`;
         }
 
@@ -62,11 +70,13 @@ export async function POST(req: Request) {
             phone: user.phone,
             role: user.role,
             vipLevel: user.vip_level,
+            restaurantId,
+            restaurantSlug,
         });
 
         await setSessionCookie(token);
 
-        return NextResponse.json({ success: true, user: { id: user.id, name: user.name, phone: user.phone, vipLevel: user.vip_level, points: 50 } });
+        return NextResponse.json({ success: true, user: { id: user.id, name: user.name, phone: user.phone, vipLevel: user.vip_level, points: 50, restaurantSlug } });
     } catch (error: any) {
         console.error('Register error:', error);
         return NextResponse.json({ error: 'Error al registrar' }, { status: 500 });

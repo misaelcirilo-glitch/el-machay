@@ -1,14 +1,16 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'el-machay-secret-2026');
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'myvipers-secret-2026');
 
 export interface Session {
     userId: string;
     name: string;
     phone: string;
-    role: 'customer' | 'admin' | 'waiter';
+    role: 'customer' | 'admin' | 'waiter' | 'superadmin';
     vipLevel: string;
+    restaurantId: string;
+    restaurantSlug: string;
 }
 
 export async function createToken(payload: Session): Promise<string> {
@@ -40,7 +42,7 @@ export async function setSessionCookie(token: string) {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        maxAge: 30 * 24 * 60 * 60,
         path: '/',
     });
 }

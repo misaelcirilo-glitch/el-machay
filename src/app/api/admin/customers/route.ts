@@ -22,7 +22,7 @@ export async function GET(req: Request) {
         customers = await db`
             SELECT id, name, phone, available_points, vip_level
             FROM users
-            WHERE role = 'customer'
+            WHERE role = 'customer' AND restaurant_id = ${session.restaurantId}
               AND (name ILIKE ${term} OR REGEXP_REPLACE(phone, '[^0-9]', '', 'g') LIKE ${phoneTerm})
             ORDER BY name
             LIMIT 10
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
         customers = await db`
             SELECT id, name, phone, available_points, vip_level
             FROM users
-            WHERE role = 'customer' AND name ILIKE ${term}
+            WHERE role = 'customer' AND restaurant_id = ${session.restaurantId} AND name ILIKE ${term}
             ORDER BY name
             LIMIT 10
         `;

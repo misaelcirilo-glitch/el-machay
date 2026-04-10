@@ -9,7 +9,7 @@ export async function GET() {
     }
 
     const promotions = await db`
-        SELECT * FROM promotions ORDER BY created_at DESC
+        SELECT * FROM promotions WHERE restaurant_id = ${session.restaurantId} ORDER BY created_at DESC
     `;
 
     return NextResponse.json({ promotions });
@@ -27,8 +27,8 @@ export async function POST(req: Request) {
     if (!title) return NextResponse.json({ error: 'El título es obligatorio' }, { status: 400 });
 
     const result = await db`
-        INSERT INTO promotions (title, description, discount_type, discount_value, min_points, valid_from, valid_until)
-        VALUES (${title}, ${description || null}, ${discount_type || null}, ${discount_value || null}, ${min_points || 0}, ${valid_from || null}, ${valid_until || null})
+        INSERT INTO promotions (restaurant_id, title, description, discount_type, discount_value, min_points, valid_from, valid_until)
+        VALUES (${session.restaurantId}, ${title}, ${description || null}, ${discount_type || null}, ${discount_value || null}, ${min_points || 0}, ${valid_from || null}, ${valid_until || null})
         RETURNING *
     `;
 
@@ -44,7 +44,7 @@ export async function PATCH(req: Request) {
     const { id, is_active } = await req.json();
     if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
 
-    await db`UPDATE promotions SET is_active = ${is_active} WHERE id = ${id}`;
+    await db`UPDATE promotions SET is_active = ${is_active} WHERE id = ${id} AND restaurant_id = ${session.restaurantId}`;
 
     return NextResponse.json({ success: true });
 }
@@ -58,7 +58,7 @@ export async function DELETE(req: Request) {
     const { id } = await req.json();
     if (!id) return NextResponse.json({ error: 'ID requerido' }, { status: 400 });
 
-    await db`DELETE FROM promotions WHERE id = ${id}`;
+    await db`DELETE FROM promotions WHERE id = ${id} AND restaurant_id = ${session.restaurantId}`;
 
     return NextResponse.json({ success: true });
 }

@@ -18,7 +18,7 @@ export async function GET() {
         SELECT r.*, t.number as table_number, t.location as table_location
         FROM reservations r
         LEFT JOIN tables t ON r.table_id = t.id
-        WHERE r.user_id = ${session.userId}
+        WHERE r.user_id = ${session.userId} AND r.restaurant_id = ${session.restaurantId}
         ORDER BY r.date DESC, r.time DESC
         LIMIT 20
     `;
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
         // Find available table
         const occupiedTables = await db`
             SELECT table_id FROM reservations
-            WHERE date = ${date} AND time = ${time}
+            WHERE date = ${date} AND time = ${time} AND restaurant_id = ${session.restaurantId}
             AND status NOT IN ('cancelled', 'no_show', 'completed')
         `;
 
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
         if (occupiedIds.length > 0) {
             tableQuery = await db`
                 SELECT id FROM tables
-                WHERE capacity >= ${partySize} AND is_active = true
+                WHERE capacity >= ${partySize} AND is_active = true AND restaurant_id = ${session.restaurantId}
                 AND id != ALL(${occupiedIds})
                 ORDER BY capacity ASC
                 LIMIT 1
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
         } else {
             tableQuery = await db`
                 SELECT id FROM tables
-                WHERE capacity >= ${partySize} AND is_active = true
+                WHERE capacity >= ${partySize} AND is_active = true AND restaurant_id = ${session.restaurantId}
                 ORDER BY capacity ASC
                 LIMIT 1
             `;
@@ -71,8 +71,8 @@ export async function POST(req: Request) {
         }
 
         const result = await db`
-            INSERT INTO reservations (user_id, table_id, date, time, party_size, notes, status)
-            VALUES (${session.userId}, ${tableId}, ${date}, ${time}, ${partySize}, ${notes || null}, 'confirmed')
+            INSERT INTO reservations (user_id, restaurant_id, table_id, date, time, party_size, notes, status)
+            VALUES (${session.userId}, ${session.restaurantId}, ${tableId}, ${date}, ${time}, ${partySize}, ${notes || null}, 'confirmed')
             RETURNING id, date, time, party_size, status
         `;
 

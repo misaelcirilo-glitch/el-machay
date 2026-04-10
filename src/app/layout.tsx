@@ -6,14 +6,14 @@ import { Providers } from './providers';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-    title: 'El Machay - Parrillas & Ceviche Peruano',
-    description: 'Restaurante peruano en Pomabamba, Ancash. Reserva tu mesa, acumula puntos VIP y disfruta lo mejor de la gastronomía peruana.',
+    title: 'MyVipers - Fidelización inteligente para restaurantes',
+    description: 'Plataforma SaaS de fidelización, reservas y carta digital para restaurantes. Puntos VIP, promociones y CRM.',
     manifest: '/manifest.json',
-    appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'El Machay' },
+    appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'MyVipers' },
 };
 
 export const viewport: Viewport = {
-    themeColor: '#1a1a2e',
+    themeColor: '#0f0f1a',
     width: 'device-width',
     initialScale: 1,
     maximumScale: 1,
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="es">
+        <html lang="es" style={{ colorScheme: 'dark' }}>
             <body className={`${inter.className} bg-[#0f0f1a] text-white antialiased min-h-screen`}>
                 <Providers>{children}</Providers>
             </body>

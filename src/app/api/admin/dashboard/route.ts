@@ -21,16 +21,16 @@ export async function GET() {
            FROM reservations r
            LEFT JOIN users u ON r.user_id = u.id
            LEFT JOIN tables t ON r.table_id = t.id
-           WHERE r.date = ${today}
+           WHERE r.date = ${today} AND r.restaurant_id = ${session.restaurantId}
            ORDER BY r.time`,
-        db`SELECT COUNT(*) as count FROM users WHERE role = 'customer'`,
-        db`SELECT COALESCE(SUM(points), 0) as total FROM point_transactions WHERE type = 'earn' AND created_at::date = ${today}`,
-        db`SELECT pt.*, u.name as customer_name FROM point_transactions pt LEFT JOIN users u ON pt.user_id = u.id ORDER BY pt.created_at DESC LIMIT 10`,
+        db`SELECT COUNT(*) as count FROM users WHERE role = 'customer' AND restaurant_id = ${session.restaurantId}`,
+        db`SELECT COALESCE(SUM(points), 0) as total FROM point_transactions WHERE type = 'earn' AND created_at::date = ${today} AND restaurant_id = ${session.restaurantId}`,
+        db`SELECT pt.*, u.name as customer_name FROM point_transactions pt LEFT JOIN users u ON pt.user_id = u.id WHERE pt.restaurant_id = ${session.restaurantId} ORDER BY pt.created_at DESC LIMIT 10`,
         db`SELECT rd.*, r.name as reward_name, u.name as customer_name, u.phone as customer_phone
            FROM redemptions rd
            LEFT JOIN rewards r ON rd.reward_id = r.id
            LEFT JOIN users u ON rd.user_id = u.id
-           WHERE rd.status = 'pending'
+           WHERE rd.status = 'pending' AND rd.restaurant_id = ${session.restaurantId}
            ORDER BY rd.created_at DESC`,
     ]);
 
