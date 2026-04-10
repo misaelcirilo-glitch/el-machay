@@ -10,7 +10,7 @@ const schema = z.object({
     email: z.string().email('Email inválido').optional().or(z.literal('')),
     password: z.string().min(4, 'Mínimo 4 caracteres'),
     referralCode: z.string().optional(),
-    restaurantSlug: z.string().min(1, 'Restaurante requerido'),
+    restaurantSlug: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -22,12 +22,18 @@ export async function POST(req: Request) {
         const { name, email, password, referralCode, restaurantSlug } = parsed.data;
         const phone = parsed.data.phone.replace(/\D/g, '');
 
-        // Verificar restaurante
-        const restaurant = await db`SELECT id, slug, name FROM restaurants WHERE slug = ${restaurantSlug} AND is_active = true`;
+        // Verificar restaurante (fallback al primero si no viene slug)
+        let restaurant;
+        if (restaurantSlug) {
+            restaurant = await db`SELECT id, slug, name FROM restaurants WHERE slug = ${restaurantSlug} AND is_active = true`;
+        } else {
+            restaurant = await db`SELECT id, slug, name FROM restaurants WHERE is_active = true ORDER BY created_at ASC LIMIT 1`;
+        }
         if (restaurant.length === 0) {
             return NextResponse.json({ error: 'Restaurante no encontrado' }, { status: 404 });
         }
         const restaurantId = restaurant[0].id;
+        const finalSlug = restaurant[0].slug;
 
         // Verificar si ya existe en este restaurante
         const existing = await db`
@@ -71,12 +77,12 @@ export async function POST(req: Request) {
             role: user.role,
             vipLevel: user.vip_level,
             restaurantId,
-            restaurantSlug,
+            restaurantSlug: finalSlug,
         });
 
         await setSessionCookie(token);
 
-        return NextResponse.json({ success: true, user: { id: user.id, name: user.name, phone: user.phone, vipLevel: user.vip_level, points: 50, restaurantSlug } });
+        return NextResponse.json({ success: true, user: { id: user.id, name: user.name, phone: user.phone, vipLevel: user.vip_level, points: 50, restaurantSlug: finalSlug } });
     } catch (error: any) {
         console.error('Register error:', error);
         return NextResponse.json({ error: 'Error al registrar' }, { status: 500 });
