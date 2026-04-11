@@ -1,25 +1,42 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/shared/lib/db';
+import { getSession } from '@/shared/lib/auth';
 
 export async function GET(req: Request) {
     try {
         const { searchParams } = new URL(req.url);
-        const slug = searchParams.get('slug');
+        let slug = searchParams.get('slug');
 
+        // Si no hay slug en query, usar el de la sesion
         if (!slug) {
-            return NextResponse.json({ error: 'Se requiere el parámetro slug' }, { status: 400 });
+            const session = await getSession();
+            if (session?.restaurantSlug) {
+                slug = session.restaurantSlug;
+            }
         }
 
-        // Buscar restaurant por slug
-        const restaurant = await db`
-            SELECT id FROM restaurants WHERE slug = ${slug} LIMIT 1
-        `;
-
-        if (restaurant.length === 0) {
-            return NextResponse.json({ error: 'Restaurante no encontrado' }, { status: 404 });
+        // Fallback final: primer restaurante activo (compatibilidad single-tenant)
+        let restaurantId: string;
+        let restaurantData: any = null;
+        if (slug) {
+            const restaurant = await db`
+                SELECT id, name, slug, description, logo_url, phone, city FROM restaurants WHERE slug = ${slug} AND is_active = true LIMIT 1
+            `;
+            if (restaurant.length === 0) {
+                return NextResponse.json({ error: 'Restaurante no encontrado' }, { status: 404 });
+            }
+            restaurantId = restaurant[0].id;
+            restaurantData = restaurant[0];
+        } else {
+            const first = await db`
+                SELECT id, name, slug, description, logo_url, phone, city FROM restaurants WHERE is_active = true ORDER BY created_at ASC LIMIT 1
+            `;
+            if (first.length === 0) {
+                return NextResponse.json({ error: 'Sin restaurantes' }, { status: 404 });
+            }
+            restaurantId = first[0].id;
+            restaurantData = first[0];
         }
-
-        const restaurantId = restaurant[0].id;
 
         const categories = await db`
             SELECT id, name, description, sort_order, image_url FROM menu_categories
@@ -37,7 +54,7 @@ export async function GET(req: Request) {
             items: items.filter((item: any) => item.category_id === cat.id),
         }));
 
-        return NextResponse.json({ menu });
+        return NextResponse.json({ menu, restaurant: restaurantData });
     } catch (error: any) {
         console.error('Menu error:', error);
         return NextResponse.json({ error: 'Error al cargar el menú' }, { status: 500 });
