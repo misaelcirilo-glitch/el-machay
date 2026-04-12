@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from '@/shared/lib/useSession';
 import { useRouter } from 'next/navigation';
-import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight, UtensilsCrossed, Edit2, X, Upload, Loader2, UserPlus, Phone } from 'lucide-react';
+import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight, UtensilsCrossed, Edit2, X, Upload, Loader2, UserPlus, Phone, Award, Image } from 'lucide-react';
 
 export default function AdminPage() {
     const { user, loading, logout } = useSession();
@@ -15,7 +15,7 @@ export default function AdminPage() {
     const [assigning, setAssigning] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [dashboard, setDashboard] = useState<any>(null);
-    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions' | 'promos' | 'carta' | 'clientes'>('reservations');
+    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions' | 'promos' | 'carta' | 'clientes' | 'rewards' | 'config'>('reservations');
     const [showRegisterCustomer, setShowRegisterCustomer] = useState(false);
     const [registerForm, setRegisterForm] = useState({ name: '', phone: '', email: '' });
     const [registerLoading, setRegisterLoading] = useState(false);
@@ -29,6 +29,13 @@ export default function AdminPage() {
     const [showPromoForm, setShowPromoForm] = useState(false);
     const [promoForm, setPromoForm] = useState({ title: '', description: '', discount_type: 'percentage', discount_value: '', min_points: '', valid_from: '', valid_until: '' });
     const [promoLoading, setPromoLoading] = useState(false);
+    const [rewards, setRewards] = useState<any[]>([]);
+    const [showRewardForm, setShowRewardForm] = useState(false);
+    const [rewardForm, setRewardForm] = useState({ name: '', description: '', points_cost: '', category: 'free_item' });
+    const [rewardLoading, setRewardLoading] = useState(false);
+    const [editingReward, setEditingReward] = useState<any>(null);
+    const [logoUploading, setLogoUploading] = useState(false);
+    const [restaurantInfo, setRestaurantInfo] = useState<any>(null);
 
     useEffect(() => {
         if (!loading && user && user.role !== 'admin' && user.role !== 'waiter') {
@@ -47,7 +54,14 @@ export default function AdminPage() {
         if (tab === 'carta') {
             loadMenu();
         }
-    }, [tab, promoLoading]);
+        if (tab === 'rewards') {
+            loadRewards();
+        }
+    }, [tab, promoLoading, rewardLoading]);
+
+    useEffect(() => {
+        fetch('/api/admin/restaurant-info').then(r => r.json()).then(setRestaurantInfo).catch(() => {});
+    }, []);
 
     const loadMenu = async () => {
         const res = await fetch('/api/admin/menu').then(r => r.json());
@@ -140,6 +154,95 @@ export default function AdminPage() {
             });
         } finally {
             setPromoLoading(false);
+        }
+    };
+
+    const loadRewards = async () => {
+        const res = await fetch('/api/admin/rewards').then(r => r.json());
+        setRewards(res.rewards || []);
+    };
+
+    const handleCreateReward = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setRewardLoading(true);
+        try {
+            await fetch('/api/admin/rewards', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...rewardForm,
+                    points_cost: parseInt(rewardForm.points_cost),
+                }),
+            });
+            setRewardForm({ name: '', description: '', points_cost: '', category: 'free_item' });
+            setShowRewardForm(false);
+        } finally {
+            setRewardLoading(false);
+        }
+    };
+
+    const handleEditReward = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingReward) return;
+        setRewardLoading(true);
+        try {
+            await fetch('/api/admin/rewards', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: editingReward.id,
+                    name: editingReward.name,
+                    description: editingReward.description,
+                    points_cost: parseInt(editingReward.points_cost),
+                    category: editingReward.category,
+                }),
+            });
+            setEditingReward(null);
+        } finally {
+            setRewardLoading(false);
+        }
+    };
+
+    const toggleReward = async (id: string, is_active: boolean) => {
+        setRewardLoading(true);
+        try {
+            await fetch('/api/admin/rewards', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id, is_active: !is_active }),
+            });
+        } finally {
+            setRewardLoading(false);
+        }
+    };
+
+    const deleteReward = async (id: string) => {
+        setRewardLoading(true);
+        try {
+            await fetch('/api/admin/rewards', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+            });
+        } finally {
+            setRewardLoading(false);
+        }
+    };
+
+    const handleUploadLogo = async (file: File) => {
+        setLogoUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            const res = await fetch('/api/admin/logo/upload', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (data.url) {
+                setRestaurantInfo((prev: any) => prev ? { ...prev, logo_url: data.url } : prev);
+            } else {
+                alert(data.error || 'Error al subir logo');
+            }
+        } finally {
+            setLogoUploading(false);
         }
     };
 
@@ -310,7 +413,9 @@ export default function AdminPage() {
                     { id: 'clientes', label: 'Clientes', icon: Users },
                     { id: 'carta', label: 'Carta', icon: UtensilsCrossed },
                     { id: 'promos', label: 'Promos', icon: Megaphone },
+                    { id: 'rewards', label: 'Premios', icon: Award },
                     { id: 'redemptions', label: 'Canjes', icon: Gift },
+                    { id: 'config', label: 'Config', icon: Image },
                     { id: 'points', label: 'Actividad', icon: TrendingUp },
                 ].map(t => (
                     <button
@@ -720,6 +825,168 @@ export default function AdminPage() {
                                 Sin clientes aún. Registra el primero con el botón de arriba.
                             </p>
                         )}
+                    </div>
+                </div>
+            )}
+            {/* Rewards Tab */}
+            {tab === 'rewards' && (
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Premios canjeables</h3>
+                        <button
+                            onClick={() => setShowRewardForm(!showRewardForm)}
+                            className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-full"
+                        >
+                            <Plus size={14} /> Nuevo premio
+                        </button>
+                    </div>
+
+                    {showRewardForm && (
+                        <form onSubmit={handleCreateReward} className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-4 space-y-3">
+                            <input
+                                type="text" placeholder="Nombre (ej: Postre gratis)" required
+                                className="w-full px-4 py-3 bg-[#0f0f1a] border border-white/10 rounded-xl text-white placeholder-slate-600 outline-none focus:border-amber-500 text-sm"
+                                value={rewardForm.name} onChange={e => setRewardForm({ ...rewardForm, name: e.target.value })}
+                            />
+                            <textarea
+                                placeholder="Descripción (ej: Elige cualquier postre de la carta)"
+                                className="w-full px-4 py-3 bg-[#0f0f1a] border border-white/10 rounded-xl text-white placeholder-slate-600 outline-none focus:border-amber-500 text-sm resize-none h-16"
+                                value={rewardForm.description} onChange={e => setRewardForm({ ...rewardForm, description: e.target.value })}
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Puntos necesarios</label>
+                                    <input
+                                        type="number" min="1" required placeholder="Ej: 100"
+                                        className="w-full px-3 py-2.5 bg-[#0f0f1a] border border-white/10 rounded-xl text-white placeholder-slate-600 outline-none focus:border-amber-500 text-sm"
+                                        value={rewardForm.points_cost} onChange={e => setRewardForm({ ...rewardForm, points_cost: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Categoría</label>
+                                    <select
+                                        className="w-full px-3 py-2.5 bg-[#0f0f1a] border border-white/10 rounded-xl text-white text-sm outline-none focus:border-amber-500"
+                                        value={rewardForm.category} onChange={e => setRewardForm({ ...rewardForm, category: e.target.value })}
+                                    >
+                                        <option value="free_item">Item gratis</option>
+                                        <option value="discount">Descuento</option>
+                                        <option value="experience">Experiencia</option>
+                                        <option value="merchandise">Merchandising</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button
+                                type="submit" disabled={rewardLoading}
+                                className="w-full py-3 bg-amber-500 text-white font-black text-sm uppercase tracking-widest rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {rewardLoading ? 'Creando...' : 'Crear Premio'}
+                            </button>
+                        </form>
+                    )}
+
+                    {rewards.length === 0 ? (
+                        <p className="text-slate-500 text-sm text-center py-6">Sin premios creados. Los clientes no podrán canjear puntos hasta que agregues premios.</p>
+                    ) : rewards.map((r: any) => (
+                        <div key={r.id} className={`bg-[#1a1a2e] border rounded-2xl p-4 ${r.is_active ? 'border-amber-500/20' : 'border-[#2a2a3e] opacity-50'}`}>
+                            <div className="flex items-start justify-between gap-3">
+                                <div className="flex-1" onClick={() => setEditingReward({ ...r, points_cost: String(r.points_cost) })}>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="font-black text-sm cursor-pointer hover:text-amber-400 transition">{r.name}</h4>
+                                        {r.is_active && <span className="text-[9px] bg-green-400/10 text-green-400 px-2 py-0.5 rounded-full font-bold uppercase">Activo</span>}
+                                    </div>
+                                    {r.description && <p className="text-xs text-slate-400 mt-1">{r.description}</p>}
+                                    <div className="flex items-center gap-3 mt-2 text-[10px] text-slate-500">
+                                        <span className="text-amber-400 font-bold">{r.points_cost} pts</span>
+                                        <span>{r.category === 'free_item' ? 'Item gratis' : r.category === 'discount' ? 'Descuento' : r.category === 'experience' ? 'Experiencia' : 'Merchandising'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button onClick={() => toggleReward(r.id, r.is_active)} className="p-1.5 text-slate-400 hover:text-amber-400 transition">
+                                        {r.is_active ? <ToggleRight size={20} className="text-green-400" /> : <ToggleLeft size={20} />}
+                                    </button>
+                                    <button onClick={() => deleteReward(r.id)} className="p-1.5 text-slate-400 hover:text-red-400 transition">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Edit Reward Modal */}
+            {editingReward && (
+                <div className="fixed inset-0 bg-black/80 z-50 flex items-end sm:items-center justify-center">
+                    <form onSubmit={handleEditReward} className="bg-[#0f0f1a] border border-[#2a2a3e] rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-black text-white">Editar premio</h3>
+                            <button type="button" onClick={() => setEditingReward(null)} className="text-slate-400"><X size={20} /></button>
+                        </div>
+                        <input
+                            type="text" required value={editingReward.name}
+                            onChange={e => setEditingReward({ ...editingReward, name: e.target.value })}
+                            className="w-full px-4 py-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white outline-none focus:border-amber-500 text-sm"
+                        />
+                        <textarea
+                            value={editingReward.description || ''}
+                            onChange={e => setEditingReward({ ...editingReward, description: e.target.value })}
+                            className="w-full px-4 py-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white outline-none focus:border-amber-500 text-sm h-20 resize-none"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Puntos</label>
+                                <input
+                                    type="number" min="1" required value={editingReward.points_cost}
+                                    onChange={e => setEditingReward({ ...editingReward, points_cost: e.target.value })}
+                                    className="w-full px-3 py-2.5 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white outline-none focus:border-amber-500 text-lg font-black"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Categoría</label>
+                                <select
+                                    className="w-full px-3 py-2.5 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white text-sm outline-none focus:border-amber-500"
+                                    value={editingReward.category} onChange={e => setEditingReward({ ...editingReward, category: e.target.value })}
+                                >
+                                    <option value="free_item">Item gratis</option>
+                                    <option value="discount">Descuento</option>
+                                    <option value="experience">Experiencia</option>
+                                    <option value="merchandise">Merchandising</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button
+                            type="submit" disabled={rewardLoading}
+                            className="w-full py-3 bg-amber-500 text-white font-black text-sm uppercase tracking-widest rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                        >
+                            {rewardLoading ? 'Guardando...' : 'Guardar cambios'}
+                        </button>
+                    </form>
+                </div>
+            )}
+
+            {/* Config Tab - Logo */}
+            {tab === 'config' && (
+                <div className="space-y-4">
+                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Logo del restaurante</h3>
+                    <p className="text-[10px] text-slate-500">Este logo aparecerá como icono cuando los clientes agreguen tu restaurante a su móvil.</p>
+
+                    <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-6 flex flex-col items-center gap-4">
+                        {restaurantInfo?.logo_url ? (
+                            <img src={restaurantInfo.logo_url} alt="Logo" className="w-32 h-32 rounded-3xl object-cover shadow-2xl" />
+                        ) : (
+                            <div className="w-32 h-32 rounded-3xl bg-[#0f0f1a] border border-[#2a2a3e] flex items-center justify-center">
+                                <Image size={40} className="text-slate-600" />
+                            </div>
+                        )}
+                        <label className="bg-amber-500 text-white px-6 py-3 rounded-xl text-sm font-bold flex items-center gap-2 cursor-pointer hover:brightness-110 transition shadow-lg">
+                            {logoUploading ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                            {logoUploading ? 'Subiendo...' : restaurantInfo?.logo_url ? 'Cambiar logo' : 'Subir logo'}
+                            <input
+                                type="file" accept="image/*" className="hidden" disabled={logoUploading}
+                                onChange={e => e.target.files?.[0] && handleUploadLogo(e.target.files[0])}
+                            />
+                        </label>
+                        <p className="text-[10px] text-slate-600">Recomendado: imagen cuadrada, mínimo 512x512px</p>
                     </div>
                 </div>
             )}

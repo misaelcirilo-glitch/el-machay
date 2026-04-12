@@ -1,7 +1,7 @@
 {
-    "name": "El Machay - Parrillas & Ceviche",
-    "short_name": "El Machay",
-    "description": "Club VIP del restaurante El Machay, Pomabamba",
+    "name": "MyVipers - Fidelización para restaurantes",
+    "short_name": "MyVipers",
+    "description": "Plataforma de fidelización, reservas y carta digital para restaurantes",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0f0f1a",
