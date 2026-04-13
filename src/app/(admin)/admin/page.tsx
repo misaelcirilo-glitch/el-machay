@@ -1,11 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSession } from '@/shared/lib/useSession';
+import { useI18n } from '@/shared/lib/i18n';
+import { useRestaurant } from '@/shared/lib/useRestaurant';
+import { LocaleSwitcher } from '@/shared/components/LocaleSwitcher';
 import { useRouter } from 'next/navigation';
 import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight, UtensilsCrossed, Edit2, X, Upload, Loader2, UserPlus, Phone, Award, Image } from 'lucide-react';
 
 export default function AdminPage() {
     const { user, loading, logout } = useSession();
+    const { t, formatPrice, currencyConfig } = useI18n();
+    const { restaurant } = useRestaurant();
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -294,13 +299,16 @@ export default function AdminPage() {
                 <div>
                     <div className="flex items-center gap-2">
                         <Flame size={20} className="text-amber-400" />
-                        <h1 className="text-xl font-black">El Machay</h1>
+                        <h1 className="text-xl font-black">{restaurant.name}</h1>
                     </div>
                     <p className="text-slate-400 text-xs uppercase tracking-widest font-bold mt-0.5">Panel de Administración</p>
                 </div>
-                <button onClick={logout} className="p-2 text-slate-500 hover:text-red-400 transition">
-                    <LogOut size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                    <LocaleSwitcher />
+                    <button onClick={logout} className="p-2 text-slate-500 hover:text-red-400 transition">
+                        <LogOut size={20} />
+                    </button>
+                </div>
             </div>
 
             {/* Stats */}

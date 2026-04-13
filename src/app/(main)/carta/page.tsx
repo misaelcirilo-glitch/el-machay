@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSession } from '@/shared/lib/useSession';
+import { useI18n } from '@/shared/lib/i18n';
 import { Flame, Star, Search, Leaf, WheatOff, CircleAlert } from 'lucide-react';
 
 interface MenuItem {
@@ -25,6 +26,7 @@ interface MenuCategory {
 
 export default function CartaPage() {
     const { user } = useSession();
+    const { t, formatPrice } = useI18n();
     const [menu, setMenu] = useState<MenuCategory[]>([]);
     const [search, setSearch] = useState('');
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -52,8 +54,8 @@ export default function CartaPage() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 pt-6">
                 <div>
-                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Hola, {user?.name?.split(' ')[0]}</p>
-                    <h1 className="text-xl font-black">Nuestra Carta</h1>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{t.carta.greeting} {user?.name?.split(' ')[0]}</p>
+                    <h1 className="text-xl font-black">{t.carta.title}</h1>
                 </div>
                 <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full">
                     <Star size={14} className="text-amber-400" />
@@ -66,7 +68,7 @@ export default function CartaPage() {
                 <Search size={16} className="absolute left-7 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                     type="text"
-                    placeholder="Buscar plato..."
+                    placeholder={t.carta.searchPlaceholder}
                     className="w-full pl-10 pr-4 py-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white placeholder-slate-500 outline-none focus:border-amber-500 transition text-sm"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
@@ -108,7 +110,6 @@ export default function CartaPage() {
                                         className={`bg-[#1a1a2e] border rounded-2xl overflow-hidden transition-all ${item.is_featured ? 'border-amber-500/30' : 'border-[#2a2a3e]'}`}
                                     >
                                         <div className="p-4 flex gap-3">
-                                            {/* Foto pequena */}
                                             {item.image_url && (
                                                 <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0">
                                                     <img
@@ -119,7 +120,6 @@ export default function CartaPage() {
                                                 </div>
                                             )}
 
-                                            {/* Info */}
                                             <div className="flex-1 flex flex-col justify-between min-w-0">
                                                 <div>
                                                     <div className="flex items-center gap-2">
@@ -132,22 +132,22 @@ export default function CartaPage() {
                                                     <div className="flex items-center gap-2 mt-1.5">
                                                         {item.is_spicy && (
                                                             <span className="flex items-center gap-1 text-[10px] text-red-400 bg-red-400/10 px-2 py-0.5 rounded-full font-bold">
-                                                                <CircleAlert size={10} /> Picante
+                                                                <CircleAlert size={10} /> {t.carta.spicy}
                                                             </span>
                                                         )}
                                                         {item.is_vegetarian && (
                                                             <span className="flex items-center gap-1 text-[10px] text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full font-bold">
-                                                                <Leaf size={10} /> Veggie
+                                                                <Leaf size={10} /> {t.carta.vegetarian}
                                                             </span>
                                                         )}
                                                         {item.is_gluten_free && (
                                                             <span className="flex items-center gap-1 text-[10px] text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded-full font-bold">
-                                                                <WheatOff size={10} /> Sin gluten
+                                                                <WheatOff size={10} /> {t.carta.glutenFree}
                                                             </span>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <p className="text-lg font-black text-amber-400 mt-1">S/{Number(item.price).toFixed(2)}</p>
+                                                <p className="text-lg font-black text-amber-400 mt-1">{formatPrice(item.price)}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -158,7 +158,7 @@ export default function CartaPage() {
 
                     {displayMenu.length === 0 && !loading && (
                         <div className="text-center py-12 text-slate-500">
-                            <p className="font-bold">No se encontraron platos</p>
+                            <p className="font-bold">{t.carta.noResults}</p>
                         </div>
                     )}
                 </div>

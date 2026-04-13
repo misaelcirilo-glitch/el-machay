@@ -1,20 +1,17 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useSession } from '@/shared/lib/useSession';
+import { useI18n } from '@/shared/lib/i18n';
+import { useRestaurant } from '@/shared/lib/useRestaurant';
 import { Star, Gift, TrendingUp, TrendingDown, Award, Sparkles } from 'lucide-react';
 
 interface PointHistory { type: string; points: number; description: string; created_at: string; }
 interface Reward { id: string; name: string; description: string; points_cost: number; category: string; }
 
-const VIP_LEVELS = [
-    { key: 'bronce', label: 'Bronce', min: 0, color: 'from-amber-700 to-amber-900', icon: '🥉' },
-    { key: 'plata', label: 'Plata', min: 500, color: 'from-slate-400 to-slate-600', icon: '🥈' },
-    { key: 'oro', label: 'Oro', min: 1500, color: 'from-yellow-400 to-amber-500', icon: '🥇' },
-    { key: 'inca', label: 'Inca', min: 5000, color: 'from-red-500 to-amber-500', icon: '👑' },
-];
-
 export default function PuntosPage() {
     const { user, refresh } = useSession();
+    const { t } = useI18n();
+    const { vipLevels } = useRestaurant();
     const [history, setHistory] = useState<PointHistory[]>([]);
     const [rewards, setRewards] = useState<Reward[]>([]);
     const [tab, setTab] = useState<'rewards' | 'history'>('rewards');
@@ -28,7 +25,7 @@ export default function PuntosPage() {
     }, []);
 
     const handleRedeem = async (rewardId: string) => {
-        if (!confirm('¿Canjear este premio?')) return;
+        if (!confirm(t.puntos.confirmRedeem)) return;
         setRedeeming(rewardId);
         try {
             const res = await fetch('/api/points', {
@@ -47,30 +44,36 @@ export default function PuntosPage() {
         }
     };
 
-    const currentLevel = VIP_LEVELS.find(l => l.key === user?.vipLevel) || VIP_LEVELS[0];
-    const nextLevel = VIP_LEVELS.find(l => l.min > (user?.totalPoints || 0));
-    const progress = nextLevel ? Math.min(100, ((user?.totalPoints || 0) / nextLevel.min) * 100) : 100;
+    const currentLevel = vipLevels.find(l => l.key === user?.vipLevel) || vipLevels[0];
+    const nextLevel = vipLevels.find(l => l.min_points > (user?.totalPoints || 0));
+    const progress = nextLevel ? Math.min(100, ((user?.totalPoints || 0) / nextLevel.min_points) * 100) : 100;
+
+    // Translate level key if available, fallback to key capitalized
+    const levelLabel = (key: string) => {
+        const labels = t.puntos.levels as Record<string, string>;
+        return labels[key] || key.charAt(0).toUpperCase() + key.slice(1);
+    };
 
     return (
         <div className="px-4 pt-6 space-y-5 pb-4 max-w-2xl mx-auto">
-            <h1 className="text-xl font-black">Mis Puntos VIP</h1>
+            <h1 className="text-xl font-black">{t.puntos.title}</h1>
 
             {/* Points Card */}
-            <div className={`bg-gradient-to-br ${currentLevel.color} rounded-2xl p-6 text-center space-y-3 relative overflow-hidden`}>
-                <div className="absolute top-2 right-3 text-4xl opacity-30">{currentLevel.icon}</div>
+            <div className={`bg-gradient-to-br ${currentLevel?.color || 'from-amber-700 to-amber-900'} rounded-2xl p-6 text-center space-y-3 relative overflow-hidden`}>
+                <div className="absolute top-2 right-3 text-4xl opacity-30">{currentLevel?.icon}</div>
                 <Star size={28} className="text-white mx-auto" />
                 <p className="text-4xl font-black text-white">{user?.availablePoints || 0}</p>
-                <p className="text-white/70 text-xs uppercase tracking-widest font-bold">Puntos disponibles</p>
+                <p className="text-white/70 text-xs uppercase tracking-widest font-bold">{t.puntos.availablePoints}</p>
                 <div className="flex items-center justify-center gap-2">
                     <Award size={14} className="text-white/80" />
-                    <span className="text-white font-black uppercase text-sm">Nivel {currentLevel.label}</span>
+                    <span className="text-white font-black uppercase text-sm">{t.puntos.level} {levelLabel(currentLevel?.key || 'bronce')}</span>
                 </div>
 
                 {nextLevel && (
                     <div className="mt-3">
                         <div className="flex justify-between text-[10px] text-white/60 font-bold mb-1">
-                            <span>{user?.totalPoints || 0} pts acumulados</span>
-                            <span>{nextLevel.min} pts → {nextLevel.label}</span>
+                            <span>{user?.totalPoints || 0} {t.puntos.accumulated}</span>
+                            <span>{nextLevel.min_points} {t.puntos.nextLevel} {levelLabel(nextLevel.key)}</span>
                         </div>
                         <div className="w-full bg-white/20 rounded-full h-2">
                             <div className="bg-white rounded-full h-2 transition-all" style={{ width: `${progress}%` }} />
@@ -85,13 +88,13 @@ export default function PuntosPage() {
                     onClick={() => setTab('rewards')}
                     className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${tab === 'rewards' ? 'bg-amber-500 text-white' : 'text-slate-400'}`}
                 >
-                    <Gift size={14} /> Premios
+                    <Gift size={14} /> {t.puntos.rewardsTab}
                 </button>
                 <button
                     onClick={() => setTab('history')}
                     className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${tab === 'history' ? 'bg-amber-500 text-white' : 'text-slate-400'}`}
                 >
-                    <Sparkles size={14} /> Historial
+                    <Sparkles size={14} /> {t.puntos.historyTab}
                 </button>
             </div>
 
@@ -108,7 +111,7 @@ export default function PuntosPage() {
                                     <div className="flex items-center gap-1 mt-2">
                                         <Star size={12} className="text-amber-400" />
                                         <span className="text-amber-400 font-black text-sm">{r.points_cost}</span>
-                                        <span className="text-slate-500 text-[10px]">puntos</span>
+                                        <span className="text-slate-500 text-[10px]">{t.puntos.points}</span>
                                     </div>
                                 </div>
                                 <button
@@ -119,7 +122,7 @@ export default function PuntosPage() {
                                         : 'bg-[#1a1a2e] text-slate-500 cursor-not-allowed'
                                     }`}
                                 >
-                                    {redeeming === r.id ? '...' : 'Canjear'}
+                                    {redeeming === r.id ? '...' : t.puntos.redeem}
                                 </button>
                             </div>
                         );
@@ -131,7 +134,7 @@ export default function PuntosPage() {
             {tab === 'history' && (
                 <div className="space-y-2">
                     {history.length === 0 ? (
-                        <p className="text-center text-slate-500 py-8">Sin movimientos aún</p>
+                        <p className="text-center text-slate-500 py-8">{t.puntos.noHistory}</p>
                     ) : history.map((h, i) => (
                         <div key={i} className="flex items-center justify-between py-3 border-b border-white/5">
                             <div className="flex items-center gap-3">

@@ -1,28 +1,32 @@
 'use client';
 import { useSession } from '@/shared/lib/useSession';
+import { useI18n } from '@/shared/lib/i18n';
+import { useRestaurant } from '@/shared/lib/useRestaurant';
+import { LocaleSwitcher } from '@/shared/components/LocaleSwitcher';
 import { User, Star, Share2, LogOut, Flame } from 'lucide-react';
-
-const VIP_COLORS: Record<string, string> = {
-    bronce: 'from-amber-700 to-amber-900',
-    plata: 'from-slate-400 to-slate-600',
-    oro: 'from-yellow-400 to-amber-600',
-    inca: 'from-red-500 to-amber-500',
-};
 
 export default function PerfilPage() {
     const { user, logout } = useSession();
+    const { t } = useI18n();
+    const { vipLevels, restaurant } = useRestaurant();
+    const vipColor = vipLevels.find(l => l.key === user?.vipLevel)?.color || 'from-amber-700 to-amber-900';
 
     const copyReferral = () => {
         if (user?.referralCode) {
             navigator.clipboard.writeText(user.referralCode);
-            alert('Código copiado: ' + user.referralCode);
+            alert(t.perfil.referralCopied + ' ' + user.referralCode);
         }
     };
 
     return (
         <div className="px-4 pt-6 space-y-6 max-w-2xl mx-auto">
+            {/* Language/Currency Switcher */}
+            <div className="flex justify-end">
+                <LocaleSwitcher />
+            </div>
+
             {/* Profile Card */}
-            <div className={`bg-gradient-to-br ${VIP_COLORS[user?.vipLevel || 'bronce']} rounded-2xl p-6 text-center space-y-3`}>
+            <div className={`bg-gradient-to-br ${vipColor} rounded-2xl p-6 text-center space-y-3`}>
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto">
                     <User size={32} className="text-white" />
                 </div>
@@ -39,18 +43,18 @@ export default function PerfilPage() {
                 <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-4 text-center">
                     <Star size={20} className="text-amber-400 mx-auto mb-1" />
                     <p className="text-2xl font-black text-amber-400">{user?.availablePoints}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Disponibles</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{t.perfil.available}</p>
                 </div>
                 <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-4 text-center">
                     <Star size={20} className="text-slate-400 mx-auto mb-1" />
                     <p className="text-2xl font-black">{user?.totalPoints}</p>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Acumulados</p>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{t.perfil.accumulated}</p>
                 </div>
             </div>
 
             {/* Referral */}
             <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-4">
-                <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-2">Tu código de referido</p>
+                <p className="text-xs text-slate-400 uppercase tracking-widest font-bold mb-2">{t.perfil.referralTitle}</p>
                 <div className="flex items-center gap-3">
                     <code className="flex-1 bg-[#1a1a2e] border border-[#2a2a3e] px-4 py-3 rounded-xl text-amber-400 font-black text-lg tracking-widest text-center">
                         {user?.referralCode}
@@ -59,7 +63,9 @@ export default function PerfilPage() {
                         <Share2 size={20} />
                     </button>
                 </div>
-                <p className="text-[10px] text-slate-500 mt-2 text-center">Comparte y gana 100 puntos por cada amigo</p>
+                <p className="text-[10px] text-slate-500 mt-2 text-center">
+                    {t.perfil.referralShare.replace('100', String(restaurant.referral_bonus))}
+                </p>
             </div>
 
             {/* Logout */}
@@ -67,7 +73,7 @@ export default function PerfilPage() {
                 onClick={logout}
                 className="w-full py-3 bg-red-500/10 border border-red-500/20 text-red-400 font-bold text-sm rounded-2xl flex items-center justify-center gap-2 hover:bg-red-500/20 transition"
             >
-                <LogOut size={16} /> Cerrar sesión
+                <LogOut size={16} /> {t.perfil.logout}
             </button>
         </div>
     );
