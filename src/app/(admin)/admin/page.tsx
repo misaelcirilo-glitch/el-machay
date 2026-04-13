@@ -4,7 +4,7 @@ import { useSession } from '@/shared/lib/useSession';
 import { useRestaurant } from '@/shared/lib/useRestaurant';
 import { LocaleSwitcher } from '@/shared/components/LocaleSwitcher';
 import { useRouter } from 'next/navigation';
-import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight, UtensilsCrossed, Edit2, X, Upload, Loader2, UserPlus, Phone, Award, Image } from 'lucide-react';
+import { Search, Star, CalendarDays, Users, TrendingUp, Gift, Check, LogOut, Flame, Megaphone, Plus, Trash2, ToggleLeft, ToggleRight, UtensilsCrossed, Edit2, X, Upload, Loader2, UserPlus, Phone, Award, Image, Wallet, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 export default function AdminPage() {
     const { user, loading, logout } = useSession();
@@ -18,7 +18,11 @@ export default function AdminPage() {
     const [assigning, setAssigning] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [dashboard, setDashboard] = useState<any>(null);
-    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions' | 'promos' | 'carta' | 'clientes' | 'rewards' | 'config'>('reservations');
+    const [tab, setTab] = useState<'points' | 'reservations' | 'redemptions' | 'promos' | 'carta' | 'clientes' | 'rewards' | 'config' | 'finance'>('reservations');
+    const [financeData, setFinanceData] = useState<any>(null);
+    const [showFinanceForm, setShowFinanceForm] = useState(false);
+    const [financeForm, setFinanceForm] = useState({ type: 'income', amount: '', description: '', category: 'general', date: '' });
+    const [financeLoading, setFinanceLoading] = useState(false);
     const [showRegisterCustomer, setShowRegisterCustomer] = useState(false);
     const [registerForm, setRegisterForm] = useState({ name: '', phone: '', email: '' });
     const [registerLoading, setRegisterLoading] = useState(false);
@@ -60,7 +64,10 @@ export default function AdminPage() {
         if (tab === 'rewards') {
             loadRewards();
         }
-    }, [tab, promoLoading, rewardLoading]);
+        if (tab === 'finance') {
+            loadFinance();
+        }
+    }, [tab, promoLoading, rewardLoading, financeLoading]);
 
     useEffect(() => {
         fetch('/api/admin/restaurant-info').then(r => r.json()).then(setRestaurantInfo).catch(() => {});
@@ -249,6 +256,43 @@ export default function AdminPage() {
         }
     };
 
+    const loadFinance = async () => {
+        const res = await fetch('/api/admin/finance').then(r => r.json());
+        setFinanceData(res);
+    };
+
+    const handleAddTransaction = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setFinanceLoading(true);
+        try {
+            await fetch('/api/admin/finance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...financeForm,
+                    amount: parseFloat(financeForm.amount),
+                }),
+            });
+            setFinanceForm({ type: 'income', amount: '', description: '', category: 'general', date: '' });
+            setShowFinanceForm(false);
+        } finally {
+            setFinanceLoading(false);
+        }
+    };
+
+    const deleteTransaction = async (id: string) => {
+        setFinanceLoading(true);
+        try {
+            await fetch('/api/admin/finance', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+            });
+        } finally {
+            setFinanceLoading(false);
+        }
+    };
+
     // Buscar clientes con debounce
     useEffect(() => {
         if (searchQuery.trim().length < 2) { setSearchResults([]); return; }
@@ -421,6 +465,7 @@ export default function AdminPage() {
                     { id: 'promos', label: 'Promos', icon: Megaphone },
                     { id: 'rewards', label: 'Premios', icon: Award },
                     { id: 'redemptions', label: 'Canjes', icon: Gift },
+                    { id: 'finance', label: 'Finanzas', icon: Wallet },
                     { id: 'config', label: 'Config', icon: Image },
                     { id: 'points', label: 'Actividad', icon: TrendingUp },
                 ].map(t => (
@@ -967,6 +1012,140 @@ export default function AdminPage() {
                             {rewardLoading ? 'Guardando...' : 'Guardar cambios'}
                         </button>
                     </form>
+                </div>
+            )}
+
+            {/* Finance Tab */}
+            {tab === 'finance' && (
+                <div className="space-y-4">
+                    {/* Summary cards */}
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="bg-[#1a1a2e] border border-green-500/20 rounded-2xl p-4 text-center">
+                            <ArrowUpCircle size={18} className="text-green-400 mx-auto mb-1" />
+                            <p className="text-lg font-black text-green-400">S/{Number(financeData?.today?.today_income || 0).toFixed(2)}</p>
+                            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Ingresos hoy</p>
+                        </div>
+                        <div className="bg-[#1a1a2e] border border-red-500/20 rounded-2xl p-4 text-center">
+                            <ArrowDownCircle size={18} className="text-red-400 mx-auto mb-1" />
+                            <p className="text-lg font-black text-red-400">S/{Number(financeData?.today?.today_expense || 0).toFixed(2)}</p>
+                            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Egresos hoy</p>
+                        </div>
+                        <div className="bg-[#1a1a2e] border border-amber-500/20 rounded-2xl p-4 text-center">
+                            <Wallet size={18} className="text-amber-400 mx-auto mb-1" />
+                            <p className="text-lg font-black text-amber-400">S/{(Number(financeData?.month?.total_income || 0) - Number(financeData?.month?.total_expense || 0)).toFixed(2)}</p>
+                            <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Balance mes</p>
+                        </div>
+                    </div>
+
+                    {/* Month totals */}
+                    <div className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-4">
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="text-slate-400">Ingresos del mes</span>
+                            <span className="font-black text-green-400">S/{Number(financeData?.month?.total_income || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-xs mt-2">
+                            <span className="text-slate-400">Egresos del mes</span>
+                            <span className="font-black text-red-400">S/{Number(financeData?.month?.total_expense || 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* Add button */}
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Movimientos</h3>
+                        <button
+                            onClick={() => setShowFinanceForm(!showFinanceForm)}
+                            className="flex items-center gap-1 text-xs font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-full"
+                        >
+                            <Plus size={14} /> Nuevo
+                        </button>
+                    </div>
+
+                    {/* Add form */}
+                    {showFinanceForm && (
+                        <form onSubmit={handleAddTransaction} className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-2xl p-4 space-y-3">
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setFinanceForm({ ...financeForm, type: 'income' })}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${financeForm.type === 'income' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-[#1a1a2e] text-slate-400 border border-[#2a2a3e]'}`}
+                                >
+                                    <ArrowUpCircle size={14} /> Ingreso
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFinanceForm({ ...financeForm, type: 'expense' })}
+                                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${financeForm.type === 'expense' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-[#1a1a2e] text-slate-400 border border-[#2a2a3e]'}`}
+                                >
+                                    <ArrowDownCircle size={14} /> Egreso
+                                </button>
+                            </div>
+                            <input
+                                type="number" step="0.01" min="0.01" placeholder="Monto" required
+                                className="w-full px-4 py-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white placeholder-slate-500 outline-none focus:border-amber-500 text-sm"
+                                value={financeForm.amount} onChange={e => setFinanceForm({ ...financeForm, amount: e.target.value })}
+                            />
+                            <input
+                                type="text" placeholder="Descripción (ej: Venta del día, Compra insumos)" required
+                                className="w-full px-4 py-3 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white placeholder-slate-500 outline-none focus:border-amber-500 text-sm"
+                                value={financeForm.description} onChange={e => setFinanceForm({ ...financeForm, description: e.target.value })}
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                                <select
+                                    className="px-3 py-2.5 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white text-sm outline-none focus:border-amber-500"
+                                    value={financeForm.category} onChange={e => setFinanceForm({ ...financeForm, category: e.target.value })}
+                                >
+                                    <option value="general">General</option>
+                                    <option value="ventas">Ventas</option>
+                                    <option value="insumos">Insumos</option>
+                                    <option value="salarios">Salarios</option>
+                                    <option value="servicios">Servicios</option>
+                                    <option value="alquiler">Alquiler</option>
+                                    <option value="otros">Otros</option>
+                                </select>
+                                <input
+                                    type="date"
+                                    className="px-3 py-2.5 bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl text-white text-sm outline-none focus:border-amber-500"
+                                    value={financeForm.date} onChange={e => setFinanceForm({ ...financeForm, date: e.target.value })}
+                                />
+                            </div>
+                            <button
+                                type="submit" disabled={financeLoading}
+                                className="w-full py-3 bg-amber-500 text-white font-black text-sm uppercase tracking-widest rounded-xl shadow-md hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                                {financeLoading ? 'Guardando...' : 'Registrar'}
+                            </button>
+                        </form>
+                    )}
+
+                    {/* Transaction list */}
+                    {(financeData?.transactions || []).length === 0 ? (
+                        <p className="text-slate-500 text-sm text-center py-6">Sin movimientos registrados</p>
+                    ) : (financeData?.transactions || []).map((tx: any) => (
+                        <div key={tx.id} className="bg-[#1a1a2e] border border-[#2a2a3e] rounded-xl p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                {tx.type === 'income'
+                                    ? <ArrowUpCircle size={18} className="text-green-400 shrink-0" />
+                                    : <ArrowDownCircle size={18} className="text-red-400 shrink-0" />
+                                }
+                                <div>
+                                    <p className="font-bold text-sm text-white">{tx.description}</p>
+                                    <div className="flex items-center gap-2 text-[10px] text-slate-500">
+                                        <span className="capitalize">{tx.category}</span>
+                                        <span>·</span>
+                                        <span>{new Date(tx.date + 'T00:00').toLocaleDateString('es-PE', { day: 'numeric', month: 'short' })}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className={`font-black text-sm ${tx.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
+                                    {tx.type === 'income' ? '+' : '-'}S/{Number(tx.amount).toFixed(2)}
+                                </span>
+                                <button onClick={() => deleteTransaction(tx.id)} className="p-1 text-slate-500 hover:text-red-400 transition">
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             )}
 
