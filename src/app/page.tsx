@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from '@/shared/lib/useSession';
@@ -12,15 +12,11 @@ import {
 } from 'lucide-react';
 
 export default function MyVipersLandingPage() {
-    const { user, loading } = useSession();
+    const { user } = useSession();
     const router = useRouter();
     const { t } = useI18n();
     const [openFaq, setOpenFaq] = useState<number | null>(null);
     const [demoLoading, setDemoLoading] = useState(false);
-
-    useEffect(() => {
-        if (!loading && user) router.replace('/admin');
-    }, [user, loading, router]);
 
     const handleDemo = async () => {
         setDemoLoading(true);
@@ -109,12 +105,20 @@ export default function MyVipersLandingPage() {
                             <Sparkles size={14} className="text-amber-400" />
                             {demoLoading ? t.landing.demoLoading : t.landing.seeDemo}
                         </button>
-                        <Link href="/login" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">
-                            {t.auth.login}
-                        </Link>
-                        <Link href="/crear-restaurante" className="px-4 py-2 bg-gradient-to-r from-amber-500 to-red-600 text-white text-sm font-bold rounded-lg hover:brightness-110 transition-all shadow-lg shadow-amber-500/20">
-                            {t.landing.createRestaurant}
-                        </Link>
+                        {user ? (
+                            <Link href="/admin" className="px-4 py-2 bg-gradient-to-r from-amber-500 to-red-600 text-white text-sm font-bold rounded-lg hover:brightness-110 transition-all shadow-lg shadow-amber-500/20 flex items-center gap-1.5">
+                                Ir al panel <ArrowRight size={14} />
+                            </Link>
+                        ) : (
+                            <>
+                                <Link href="/login" className="text-sm font-bold text-slate-400 hover:text-white transition-colors">
+                                    {t.auth.login}
+                                </Link>
+                                <Link href="/crear-restaurante" className="px-4 py-2 bg-gradient-to-r from-amber-500 to-red-600 text-white text-sm font-bold rounded-lg hover:brightness-110 transition-all shadow-lg shadow-amber-500/20">
+                                    {t.landing.createRestaurant}
+                                </Link>
+                            </>
+                        )}
                     </div>
                 </div>
             </nav>
