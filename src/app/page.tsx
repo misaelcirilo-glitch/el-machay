@@ -7,7 +7,7 @@ import { useI18n } from '@/shared/lib/i18n';
 import { LocaleSwitcher } from '@/shared/components/LocaleSwitcher';
 import {
     Zap, Star, UtensilsCrossed, Users, TrendingUp, Gift, ArrowRight,
-    Calendar, Wallet, Globe, DollarSign, Check, ChevronDown, Quote, Flame,
+    Calendar, Wallet, Globe, DollarSign, Check, ChevronDown, Flame,
     Shield, Sparkles, Award
 } from 'lucide-react';
 
@@ -46,7 +46,6 @@ export default function MyVipersLandingPage() {
         { icon: Gift, color: 'purple', title: t.landing.features.promos, desc: t.landing.features.promosDesc },
         { icon: Users, color: 'green', title: t.landing.features.crm, desc: t.landing.features.crmDesc },
         { icon: Calendar, color: 'cyan', title: t.landing.features.reservations, desc: t.landing.features.reservationsDesc },
-        { icon: TrendingUp, color: 'rose', title: t.landing.features.multiLocation, desc: t.landing.features.multiLocationDesc },
         { icon: Wallet, color: 'emerald', title: t.landing.features.finance, desc: t.landing.features.financeDesc },
         { icon: Globe, color: 'indigo', title: t.landing.features.multiLang, desc: t.landing.features.multiLangDesc },
         { icon: DollarSign, color: 'orange', title: t.landing.features.multiCurrency, desc: t.landing.features.multiCurrencyDesc },
@@ -57,12 +56,6 @@ export default function MyVipersLandingPage() {
         { value: '+15%', label: t.landing.statsTicket, desc: t.landing.statsTicketDesc, color: 'text-emerald-400' },
         { value: '5 min', label: t.landing.statsSetup, desc: t.landing.statsSetupDesc, color: 'text-blue-400' },
         { value: '0%', label: t.landing.statsCommission, desc: t.landing.statsCommissionDesc, color: 'text-rose-400' },
-    ];
-
-    const testimonials = [
-        { name: t.landing.testimonial1Name, role: t.landing.testimonial1Role, text: t.landing.testimonial1Text, color: 'from-amber-500 to-red-600' },
-        { name: t.landing.testimonial2Name, role: t.landing.testimonial2Role, text: t.landing.testimonial2Text, color: 'from-blue-500 to-cyan-600' },
-        { name: t.landing.testimonial3Name, role: t.landing.testimonial3Role, text: t.landing.testimonial3Text, color: 'from-emerald-500 to-teal-600' },
     ];
 
     const colorClasses: Record<string, { bg: string; text: string; ring: string }> = {
@@ -292,34 +285,6 @@ export default function MyVipersLandingPage() {
                             </div>
                         );
                     })}
-                </div>
-            </section>
-
-            {/* Testimonials */}
-            <section className="relative z-10 max-w-6xl mx-auto px-6 py-20">
-                <div className="text-center mb-14">
-                    <h2 className="text-3xl md:text-4xl font-black text-white">{t.landing.testimonialsTitle}</h2>
-                    <p className="text-slate-400 mt-3">{t.landing.testimonialsSubtitle}</p>
-                </div>
-                <div className="grid md:grid-cols-3 gap-6">
-                    {testimonials.map((t2, i) => (
-                        <div key={i} className="bg-[#1a1a2e] border border-white/5 rounded-2xl p-6 relative">
-                            <Quote size={28} className="text-amber-500/30 absolute top-4 right-4" />
-                            <div className="flex items-center gap-1 text-amber-400 mb-4">
-                                {[1, 2, 3, 4, 5].map(n => <Star key={n} size={14} fill="currentColor" />)}
-                            </div>
-                            <p className="text-slate-300 leading-relaxed text-sm">{t2.text}</p>
-                            <div className="flex items-center gap-3 mt-5 pt-5 border-t border-white/5">
-                                <div className={`w-10 h-10 bg-gradient-to-br ${t2.color} rounded-full flex items-center justify-center text-white font-black text-sm`}>
-                                    {t2.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                                </div>
-                                <div>
-                                    <p className="text-white text-sm font-bold">{t2.name}</p>
-                                    <p className="text-xs text-slate-500">{t2.role}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
                 </div>
             </section>
 
